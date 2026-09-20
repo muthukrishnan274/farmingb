@@ -1,0 +1,396 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ chatbot_title }}</title>
+    <style>
+        :root {
+            --bg: #f5f7f2;
+            --panel: #ffffff;
+            --text: #172018;
+            --muted: #667066;
+            --border: #dfe5dc;
+            --accent: #2f7d32;
+            --accent-dark: #246228;
+            --user: #e7f3e5;
+            --assistant: #f8faf7;
+            --shadow: 0 12px 40px rgba(24, 45, 27, 0.10);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, #eef7eb 0, var(--bg) 42%, #eef1ec 100%);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .app {
+            width: min(100%, 980px);
+            height: 100vh;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,.72);
+            backdrop-filter: blur(10px);
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,.9);
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: #e6f3e3;
+            font-size: 23px;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 750;
+        }
+
+        .subtitle {
+            margin: 3px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px 20px;
+            scroll-behavior: smooth;
+        }
+
+        .empty {
+            min-height: 100%;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .empty-card {
+            max-width: 620px;
+            padding: 30px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .empty h1 {
+            margin: 0 0 10px;
+            font-size: clamp(25px, 5vw, 38px);
+        }
+
+        .empty p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .message-row {
+            display: flex;
+            margin: 0 auto 18px;
+            max-width: 820px;
+        }
+
+        .message-row.user { justify-content: flex-end; }
+        .message-row.assistant { justify-content: flex-start; }
+
+        .bubble {
+            max-width: min(78%, 700px);
+            padding: 12px 15px;
+            border-radius: 18px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            box-shadow: 0 3px 12px rgba(0,0,0,.04);
+        }
+
+        .user .bubble {
+            background: var(--user);
+            border-bottom-right-radius: 6px;
+        }
+
+        .assistant .bubble {
+            background: var(--assistant);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 6px;
+        }
+
+        .typing {
+            display: inline-flex;
+            gap: 5px;
+            padding: 13px 16px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--assistant);
+        }
+
+        .typing span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #879087;
+            animation: bounce 1s infinite ease-in-out;
+        }
+
+        .typing span:nth-child(2) { animation-delay: .12s; }
+        .typing span:nth-child(3) { animation-delay: .24s; }
+
+        @keyframes bounce {
+            0%, 70%, 100% { transform: translateY(0); opacity: .45; }
+            35% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        .composer-wrap {
+            padding: 14px 18px 18px;
+            border-top: 1px solid var(--border);
+            background: rgba(255,255,255,.92);
+        }
+
+        .composer {
+            width: min(100%, 820px);
+            margin: 0 auto;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            padding: 8px 8px 8px 14px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+        }
+
+        textarea {
+            flex: 1;
+            resize: none;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            line-height: 1.45;
+            max-height: 150px;
+            padding: 7px 0;
+        }
+
+        button {
+            width: 42px;
+            height: 42px;
+            border: 0;
+            border-radius: 13px;
+            background: var(--accent);
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            flex: 0 0 auto;
+        }
+
+        button:hover { background: var(--accent-dark); }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+
+        .hint {
+            width: min(100%, 820px);
+            margin: 8px auto 0;
+            color: var(--muted);
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .error {
+            max-width: 820px;
+            margin: 0 auto 15px;
+            padding: 11px 13px;
+            color: #8b2727;
+            background: #fff0f0;
+            border: 1px solid #f0caca;
+            border-radius: 12px;
+            display: none;
+        }
+
+        @media (max-width: 640px) {
+            header { padding: 14px 15px; }
+            #chat { padding: 18px 12px; }
+            .bubble { max-width: 88%; }
+            .composer-wrap { padding: 10px 10px 13px; }
+            .empty-card { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <header>
+        <div class="logo" aria-hidden="true">🌱</div>
+        <div>
+            <h1 class="title">{{ chatbot_title }}</h1>
+            <p class="subtitle">Agriculture-focused AI assistant</p>
+        </div>
+    </header>
+
+    <main id="chat" aria-live="polite">
+        <div id="empty" class="empty">
+            <div class="empty-card">
+                <div class="empty-icon">🌾</div>
+                <h1>How can I help?</h1>
+                <p>Ask about crops, soil, irrigation, fertilizers, pests, sustainable farming, agricultural technology, and other agriculture-related topics.</p>
+            </div>
+        </div>
+    </main>
+
+    <div class="composer-wrap">
+        <div id="error" class="error" role="alert"></div>
+
+        <form id="composer" class="composer">
+            <textarea id="message" rows="1" maxlength="4000"
+                placeholder="Ask an agriculture question..."
+                aria-label="Message"></textarea>
+            <button id="send" type="submit" aria-label="Send">➤</button>
+        </form>
+        <div class="hint">Enter to send · Shift+Enter for a new line</div>
+    </div>
+</div>
+
+<script>
+    const chat = document.getElementById("chat");
+    const empty = document.getElementById("empty");
+    const form = document.getElementById("composer");
+    const textarea = document.getElementById("message");
+    const send = document.getElementById("send");
+    const errorBox = document.getElementById("error");
+
+    // Browser-owned conversation memory. The backend remains stateless.
+    const history = [];
+
+    function scrollToBottom() {
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addMessage(role, content) {
+        if (empty) empty.style.display = "none";
+
+        const row = document.createElement("div");
+        row.className = `message-row ${role}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = content;
+
+        row.appendChild(bubble);
+        chat.appendChild(row);
+        scrollToBottom();
+        return row;
+    }
+
+    function addTyping() {
+        const row = document.createElement("div");
+        row.className = "message-row assistant";
+        row.id = "typing";
+
+        const box = document.createElement("div");
+        box.className = "typing";
+        box.innerHTML = "<span></span><span></span><span></span>";
+
+        row.appendChild(box);
+        chat.appendChild(row);
+        scrollToBottom();
+    }
+
+    function showError(message) {
+        errorBox.textContent = message;
+        errorBox.style.display = "block";
+    }
+
+    function clearError() {
+        errorBox.textContent = "";
+        errorBox.style.display = "none";
+    }
+
+    function resizeTextarea() {
+        textarea.style.height = "auto";
+        textarea.style.height = Math.min(textarea.scrollHeight, 150) + "px";
+    }
+
+    textarea.addEventListener("input", resizeTextarea);
+
+    textarea.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            form.requestSubmit();
+        }
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearError();
+
+        const message = textarea.value.trim();
+        if (!message || send.disabled) return;
+
+        addMessage("user", message);
+        textarea.value = "";
+        resizeTextarea();
+
+        send.disabled = true;
+        addTyping();
+
+        try {
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: message,
+                    history: history
+                })
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            const typing = document.getElementById("typing");
+            if (typing) typing.remove();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Unable to get a response.");
+            }
+
+            const reply = typeof data.reply === "string" ? data.reply.trim() : "";
+            if (!reply) throw new Error("The server returned an empty response.");
+
+            addMessage("assistant", reply);
+
+            history.push({ role: "user", content: message });
+            history.push({ role: "assistant", content: reply });
+
+            // Keep browser memory bounded to match the backend policy.
+            while (history.length > 30) history.shift();
+
+        } catch (error) {
+            const typing = document.getElementById("typing");
+            if (typing) typing.remove();
+            showError(error.message || "Something went wrong. Please try again.");
+        } finally {
+            send.disabled = false;
+            textarea.focus();
+            scrollToBottom();
+        }
+    });
+</script>
+</body>
+</html>
